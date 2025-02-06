@@ -1,15 +1,18 @@
 import streamlit as st
-import json
-import os
-import gspread
+import json, os, gspread
 
 # Configuração da página
 st.set_page_config(page_title="Juego - Mobile", layout="centered")
 st.title("Juego de Adivinanza de Palabras (Mobile)")
 st.write("Ingresá tu nombre y adiviná las palabras.")
 
-# Inicializa a conexão com o Google Sheets usando as credenciais dos secrets
-gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+# Obter as credenciais do secret e convertê-las para dicionário, se necessário
+service_account_info = st.secrets["gcp_service_account"]
+if isinstance(service_account_info, str):
+    service_account_info = json.loads(service_account_info)
+
+# Inicializa a conexão com o Google Sheets usando as credenciais
+gc = gspread.service_account_from_dict(service_account_info)
 spreadsheet_id = st.secrets["SPREADSHEET_ID"]
 sheet = gc.open_by_key(spreadsheet_id).sheet1
 
