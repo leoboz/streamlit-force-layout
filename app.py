@@ -2,10 +2,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 import json
 
-# --- Lógica do Jogo e Dados dos Nós ---
-# Para este exemplo, vamos manter uma lista estática.
-# Em seu jogo, você poderá atualizar essa lista conforme as palavras são descobertas.
-nodes = [
+# Configura o Streamlit
+st.set_page_config(page_title="Word Guessing Game", layout="wide")
+
+# Lista completa de nós (palavras) – a palavra central e as demais
+all_possible_nodes = [
     {"id": "SYNTHESIS", "fixed": True},
     {"id": "integración"},
     {"id": "simplificar"},
@@ -21,12 +22,49 @@ nodes = [
     {"id": "sumario"}
 ]
 
-# Aqui, você pode modificar os nós para marcar quais palavras foram descobertas,
-# por exemplo, adicionando uma propriedade "discovered": True ou alterando a cor.
+# Inicializa o estado da sessão para guardar as palavras descobertas
+if "discovered" not in st.session_state:
+    st.session_state["discovered"] = []
 
-nodes_data = json.dumps(nodes)
+# --- Interface de Interação com o Usuário ---
+st.title("Word Guessing Game")
+st.write("Tente adivinhar as palavras ao redor da palavra central.")
 
-# --- Código HTML/JS com D3.js ---
+# Input do nome do usuário
+name = st.text_input("Digite seu nome:")
+
+# Input para o palpite
+guess = st.text_input("Digite uma palavra:")
+
+if st.button("Enviar Palpite"):
+    if not name:
+        st.error("Por favor, informe seu nome!")
+    else:
+        # Cria uma lista com as palavras válidas (exceto a central)
+        valid_words = [node["id"].lower() for node in all_possible_nodes if node["id"].lower() != "synthesis"]
+        if guess.lower() in valid_words:
+            if guess.lower() not in st.session_state["discovered"]:
+                st.session_state["discovered"].append(guess.lower())
+                st.success(f"Parabéns {name}! Você descobriu '{guess}'.")
+            else:
+                st.warning(f"A palavra '{guess}' já foi descoberta!")
+        else:
+            st.error(f"'{guess}' não é uma palavra válida.")
+
+# --- Atualiza a lista de nós com base nas palavras descobertas ---
+updated_nodes = []
+for node in all_possible_nodes:
+    node_copy = dict(node)
+    # A palavra central (SYNTHESIS) sempre é considerada descoberta
+    if node_copy["id"].lower() == "synthesis":
+        node_copy["discovered"] = True
+    else:
+        node_copy["discovered"] = (node_copy["id"].lower() in st.session_state["discovered"])
+    updated_nodes.append(node_copy)
+
+nodes_data = json.dumps(updated_nodes)
+
+# --- Código HTML/JS com D3.js para a Simulação ---
 html_code = f"""
 <html>
   <head>
@@ -62,11 +100,21 @@ html_code = f"""
       const svg = d3.select("svg")
         .attr("viewBox", [0, 0, width, height]);
 
-      // Cria a simulação de forças
+      // Cria a simulação de forças:
+      // - forceManyBody: repulsão entre os nós.
+      // - forceCenter: centraliza os nós.
+      // - forceCollide: evita que os nós se toquem.
       const simulation = d3.forceSimulation(nodes)
           .force("charge", d3.forceManyBody().strength(-200))
           .force("center", d3.forceCenter(width / 2, height / 2))
-          .force("collision", d3.forceCollide().radius(d => (d.id.length * 10) + 10))
+          .force("collision", d3.forceCollide().radius(d => {{
+              // Se o nó é descoberto ou é central, usa um raio baseado no comprimento do texto; caso contrário, retorna 0 (invisível)
+              if(d.central || d.discovered) {{
+                 return (d.id.length * 10) + 10;
+              }} else {{
+                 return 0;
+              }}
+          }}))
           .on("tick", ticked);
 
       // Cria grupos para cada nó
@@ -78,24 +126,27 @@ html_code = f"""
           .on("drag", dragged)
           .on("end", dragended));
 
-      // Adiciona um círculo para cada nó
+      // Adiciona um círculo para cada nó:
+      // - Nó central: círculo de raio fixo e cor vermelha.
+      // - Nó descoberto: círculo com raio proporcional ao tamanho do texto.
+      // - Nó não descoberto: não desenha (raio 0 e fill "none").
       node.append("circle")
-          .attr("r", d => d.central ? 60 : d.id.length * 5)
-          .attr("fill", d => d.central ? "red" : "lightgray")
+          .attr("r", d => d.central ? 60 : (d.discovered ? d.id.length * 5 : 0))
+          .attr("fill", d => d.central ? "red" : (d.discovered ? "lightgray" : "none"))
           .attr("stroke", "black");
 
-      // Adiciona o texto centralizado
+      // Adiciona o texto, mas só exibe se o nó for central ou descoberto.
       node.append("text")
           .attr("dy", 4)
           .attr("text-anchor", "middle")
-          .text(d => d.id);
+          .text(d => (d.central || d.discovered) ? d.id : "");
 
-      // Função de atualização da simulação
+      // Função chamada a cada tick da simulação.
       function ticked() {{
         node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
       }}
 
-      // Funções para drag (arrastar os nós)
+      // Funções para permitir arrastar os nós (exceto o central)
       function dragstarted(event, d) {{
         if (!event.active) simulation.alphaTarget(0.3).restart();
         if (!d.central) {{
@@ -123,8 +174,5 @@ html_code = f"""
 </html>
 """
 
-# --- Exibir o Componente no Streamlit ---
-st.title("Simulação Force-Directed com D3.js")
-st.write("A palavra central (SYNTHESIS) está fixa e os outros nós se organizam ao redor.")
-
+st.subheader("Simulação Force-Directed")
 components.html(html_code, width=1200, height=900)
