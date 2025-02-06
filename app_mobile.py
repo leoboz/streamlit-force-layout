@@ -49,7 +49,7 @@ st.write("Ingresá tu nombre y adiviná las palabras.")
 name = st.text_input("Poné tu nombre:")
 guess = st.text_input("Escribí una palabra:")
 
-# Lista de palavras válidas (excluindo a palavra central "SÍNTESIS")
+# Lista de palabras válidas (excluyendo la palabra central "SÍNTESIS")
 all_possible_words = [
     "integración", "simplificar", "resumen", "reducción",
     "guión", "recopilación", "compendio", "acortamiento",
@@ -72,4 +72,4 @@ if st.button("Enviar"):
 
 st.markdown("---")
 st.write("Después de enviar tu respuesta, la proyección se actualiza en la pantalla grande.")
-st.markdown('[Ver Proyección](https://YOUR_APP_DISPLAY_URL)', unsafe_allow_html=True)
+st.markdown('[Ver Proyección](https://app-force-layout-oz7bsyxrplpkahr2dzr6xp.streamlit.app/)', unsafe_allow_html=True)
