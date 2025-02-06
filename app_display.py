@@ -1,19 +1,43 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json, os
+import json, os, psycopg2
 from streamlit_autorefresh import st_autorefresh
 
-# Define o caminho do arquivo de dados
-DATA_FILE = "game_data.json"
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump({"discovered": []}, f, ensure_ascii=False)
+# Configuração da página
+st.set_page_config(page_title="Juego - Proyección", layout="wide")
+
+# Obter a variável de conexão do Supabase dos secrets
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS discovered_words (
+            word TEXT PRIMARY KEY
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def read_game_data():
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT word FROM discovered_words;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    discovered = [row[0] for row in rows]
+    return {"discovered": discovered}
 
-# Lista completa de nós (palavras)
+# Inicializa o banco de dados (cria a tabela se necessário)
+init_db()
+
+# Lista completa de nodos (palabras)
 all_possible_nodes = [
     {"id": "SÍNTESIS", "fixed": True},
     {"id": "integración"},
@@ -42,14 +66,12 @@ for node in all_possible_nodes:
     updated_nodes.append(node_copy)
 nodes_data = json.dumps(updated_nodes)
 
-st.set_page_config(page_title="Jogo - Projeção", layout="wide")
-st.title("Projeção do Jogo")
-st.write("Esta é a tela de projeção. Ela se atualiza em tempo real.")
+st.title("Proyección del Juego")
+st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
 
-# Auto-refresca a tela a cada 2 segundos
+# Auto-refresca a cada 2 segundos para mostrar as atualizações
 st_autorefresh(interval=2000, key="display_autorefresh")
 
-# Código HTML/JS com D3.js para a simulação interativa
 html_code = f"""
 <html>
   <head>
@@ -70,7 +92,7 @@ html_code = f"""
       const width = 1200;
       const height = 900;
       let nodes = {nodes_data};
-      // Fixa o nó central ("SÍNTESIS") no centro
+      // Fijar el nodo central ("SÍNTESIS") en el centro
       nodes = nodes.map(d => {{
         if(d.id === "SÍNTESIS") {{
           d.fx = width / 2;
@@ -116,7 +138,7 @@ html_code = f"""
         node.attr("transform", function(d) {{
             let r = d.central ? 60 : (d.discovered ? d.id.length * 5 : 0);
             if(r === 0) r = 5;
-            // Garantir que os nós permaneçam dentro do canvas
+            // Manter os nós dentro dos limites do canvas
             d.x = Math.max(r, Math.min(width - r, d.x));
             d.y = Math.max(r, Math.min(height - r, d.y));
             return "translate(" + d.x + "," + d.y + ")";
@@ -148,4 +170,4 @@ html_code = f"""
 """
 
 components.html(html_code, width=1200, height=900)
-st.markdown('<br><a href="https://seu-app-mobile.streamlit.app" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
+st.markdown('<br><a href="https://YOUR_APP_MOBILE_URL" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
