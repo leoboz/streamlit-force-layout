@@ -3,15 +3,13 @@ import streamlit.components.v1 as components
 import json, os
 from streamlit_autorefresh import st_autorefresh
 
-# --- Obtener los parámetros de la URL sin producir salida ---
+# Llamar a set_page_config como primera instrucción para ambos modos
+st.set_page_config(page_title="Juego de Adivinanza de Palabras", layout="wide")
+
+# --- Obtener los parámetros de la URL ---
+# Nota: st.query_params es una propiedad, por lo que se accede sin paréntesis.
 params = st.query_params
 view = params.get("view", ["mobile"])[0]
-
-# --- Configurar la página según la vista ---
-if view == "mobile":
-    st.set_page_config(page_title="Juego - Móvil", layout="centered")
-else:
-    st.set_page_config(page_title="Juego - Proyección", layout="wide")
 
 # --- Archivo de datos compartido ---
 DATA_FILE = "game_data.json"
@@ -54,11 +52,26 @@ for node in all_possible_nodes:
     else:
         node_copy["discovered"] = (node_copy["id"].lower() in game_data["discovered"])
     updated_nodes.append(node_copy)
-
 nodes_data = json.dumps(updated_nodes)
 
 # ----- MODO MOBILE: Formulario para enviar respuestas -----
 if view == "mobile":
+    # Aplicar CSS para centrar el contenido
+    st.markdown(
+        """
+        <style>
+        .centered {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            flex-direction: column;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+    st.markdown('<div class="centered">', unsafe_allow_html=True)
     st.title("Juego de Adivinanza de Palabras (Móvil)")
     st.write("Ingresá tu nombre y adiviná las palabras.")
 
@@ -80,8 +93,9 @@ if view == "mobile":
                     st.warning(f"¡La palabra '{guess}' ya fue descubierta!")
             else:
                 st.error(f"'{guess}' no es una palabra válida.")
-    st.write("Podés ver la proyección en otra pantalla:")
-    st.markdown("[Ver Proyección](?view=display)")
+    # Enlace para cambiar a la vista de proyección
+    st.markdown('<br><a href="?view=display" target="_self">Ver Proyección</a>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # ----- MODO DISPLAY: Visualización interactiva en pantalla grande -----
 else:
@@ -188,4 +202,4 @@ else:
     """
     st.subheader("Simulación Force-Directed")
     components.html(html_code, width=1200, height=900)
-    st.write('Link para ingresar respuestas: [Ver Móvil](?view=mobile)')
+    st.markdown('<br><a href="?view=mobile" target="_self">Ver Móvil</a>', unsafe_allow_html=True)
