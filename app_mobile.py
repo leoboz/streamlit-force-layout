@@ -1,11 +1,12 @@
 import streamlit as st
 import json, os, psycopg2
 
+# Configuração da página
 st.set_page_config(page_title="Juego - Mobile", layout="centered")
 st.title("Juego de Adivinanza de Palabras (Mobile)")
 st.write("Ingresá tu nombre y adiviná las palabras.")
 
-# Obter a variável de conexão do Supabase (que deve estar configurada nos secrets)
+# Obter a variável de conexão do Supabase (configurada no secret DATABASE_URL)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 def get_connection():
@@ -41,12 +42,13 @@ def update_game_data(word):
     cur.close()
     conn.close()
 
-# Inicializa o banco de dados
+# Inicializa o banco de dados (cria a tabela, se necessário)
 init_db()
 
 name = st.text_input("Poné tu nombre:")
 guess = st.text_input("Escribí una palabra:")
 
+# Lista de palavras válidas (excluindo a palavra central "SÍNTESIS")
 all_possible_words = [
     "integración", "simplificar", "resumen", "reducción",
     "guión", "recopilación", "compendio", "acortamiento",
@@ -69,4 +71,5 @@ if st.button("Enviar"):
 
 st.markdown("---")
 st.write("Después de enviar tu respuesta, la proyección se actualiza en la pantalla grande.")
+# Substitua pela URL real do app display (obtida após implantar o app_display.py)
 st.markdown('[Ver Proyección](https://app-force-layout-oz7bsyxrplpkahr2dzr6xp.streamlit.app/)', unsafe_allow_html=True)
