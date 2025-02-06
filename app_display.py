@@ -5,7 +5,7 @@ import os
 import gspread
 from streamlit_autorefresh import st_autorefresh
 
-# Configurar a página
+# Configuração da página
 st.set_page_config(page_title="Juego - Proyección", layout="wide")
 st.title("Proyección del Juego")
 st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
@@ -13,12 +13,13 @@ st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
 # Auto-refresca a cada 2 segundos
 st_autorefresh(interval=2000, key="display_autorefresh")
 
-# Inicializa a conexão com o Google Sheets usando os secrets
+# Inicializa a conexão com o Google Sheets usando as credenciais dos secrets
 gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
 spreadsheet_id = st.secrets["SPREADSHEET_ID"]
 sheet = gc.open_by_key(spreadsheet_id).sheet1
 
 def read_game_data():
+    """Lê os dados do Google Sheet e retorna um dicionário com as palavras descobertas."""
     records = sheet.get_all_values()
     words = [row[0].lower() for row in records[1:] if row]
     return {"discovered": words}
@@ -44,6 +45,7 @@ data = read_game_data()
 updated_nodes = []
 for node in all_possible_nodes:
     node_copy = dict(node)
+    # A palavra central "SÍNTESIS" é sempre considerada descoberta
     if node_copy["id"].lower() == "sintesis":
         node_copy["discovered"] = True
     else:
@@ -82,7 +84,8 @@ html_code = f"""
         }}
         return d;
       }});
-      const svg = d3.select("svg").attr("viewBox", [0, 0, width, height]);
+      const svg = d3.select("svg")
+        .attr("viewBox", [0, 0, width, height]);
       const simulation = d3.forceSimulation(nodes)
           .force("charge", d3.forceManyBody().strength(-200))
           .force("center", d3.forceCenter(width / 2, height / 2))
@@ -97,12 +100,12 @@ html_code = f"""
           .force("y", d3.forceY(height / 2).strength(0.05))
           .on("tick", ticked);
       const node = svg.selectAll("g")
-          .data(nodes)
-          .join("g")
-          .call(d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended));
+        .data(nodes)
+        .join("g")
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended));
       node.append("circle")
           .attr("r", d => d.central ? 60 : (d.discovered ? d.id.length * 5 : 0))
           .attr("fill", d => d.central ? "#ff6961" : (d.discovered ? "#77dd77" : "none"))
@@ -113,40 +116,4 @@ html_code = f"""
           .attr("text-anchor", "middle")
           .text(d => (d.central || d.discovered) ? d.id : "");
       function ticked() {{
-        node.attr("transform", function(d) {{
-            let r = d.central ? 60 : (d.discovered ? d.id.length * 5 : 0);
-            if(r === 0) r = 5;
-            // Garantir que los nodos permanezcan dentro del canvas
-            d.x = Math.max(r, Math.min(width - r, d.x));
-            d.y = Math.max(r, Math.min(height - r, d.y));
-            return "translate(" + d.x + "," + d.y + ")";
-        }});
-      }}
-      function dragstarted(event, d) {{
-        if (!event.active) simulation.alphaTarget(0.3).restart();
-        if (!d.central) {{
-          d.fx = d.x;
-          d.fy = d.y;
-        }}
-      }}
-      function dragged(event, d) {{
-        if (!d.central) {{
-          d.fx = event.x;
-          d.fy = event.y;
-        }}
-      }}
-      function dragended(event, d) {{
-        if (!event.active) simulation.alphaTarget(0);
-        if (!d.central) {{
-          d.fx = null;
-          d.fy = null;
-        }}
-      }}
-    </script>
-  </body>
-</html>
-"""
-
-import streamlit.components.v1 as components
-components.html(html_code, width=1200, height=900)
-st.markdown('<br><a href="https://app-force-layout-oz7bsyxrplpkahr2dzr6xp.streamlit.app/" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
+        node.attr("transform", func
