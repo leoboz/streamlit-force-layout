@@ -3,31 +3,29 @@ import streamlit.components.v1 as components
 import json, os, gspread
 from streamlit_autorefresh import st_autorefresh
 
-# Configuração da página
 st.set_page_config(page_title="Juego - Proyección", layout="wide")
 st.title("Proyección del Juego")
 st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
 
-# Auto-refresca a cada 2 segundos
 st_autorefresh(interval=2000, key="display_autorefresh")
 
-# Obter as credenciais do secret e convertê-las para dicionário, se necessário
 service_account_info = st.secrets["gcp_service_account"]
 if isinstance(service_account_info, str):
-    service_account_info = json.loads(service_account_info)
+    try:
+        service_account_info = json.loads(service_account_info)
+    except json.JSONDecodeError as e:
+        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que el secret esté correctamente formateado como TOML.")
+        st.stop()
 
-# Inicializa a conexão com o Google Sheets usando as credenciais
 gc = gspread.service_account_from_dict(service_account_info)
 spreadsheet_id = st.secrets["SPREADSHEET_ID"]
 sheet = gc.open_by_key(spreadsheet_id).sheet1
 
 def read_game_data():
-    """Lê os dados do Google Sheet e retorna um dicionário com as palavras descobertas."""
     records = sheet.get_all_values()
     words = [row[0].lower() for row in records[1:] if row]
     return {"discovered": words}
 
-# Lista completa de nodos (palabras)
 all_possible_nodes = [
     {"id": "SÍNTESIS", "fixed": True},
     {"id": "integración"},
@@ -48,7 +46,6 @@ data = read_game_data()
 updated_nodes = []
 for node in all_possible_nodes:
     node_copy = dict(node)
-    # A palavra central "SÍNTESIS" é sempre considerada descoberta
     if node_copy["id"].lower() == "sintesis":
         node_copy["discovered"] = True
     else:
@@ -76,7 +73,6 @@ html_code = f"""
       const width = 1200;
       const height = 900;
       let nodes = {nodes_data};
-      // Fijar el nodo central ("SÍNTESIS") en el centro
       nodes = nodes.map(d => {{
         if(d.id === "SÍNTESIS") {{
           d.fx = width / 2;
@@ -121,7 +117,6 @@ html_code = f"""
         node.attr("transform", function(d) {{
             let r = d.central ? 60 : (d.discovered ? d.id.length * 5 : 0);
             if(r === 0) r = 5;
-            // Garantir que los nodos permanezcan dentro del canvas
             d.x = Math.max(r, Math.min(width - r, d.x));
             d.y = Math.max(r, Math.min(height - r, d.y));
             return "translate(" + d.x + "," + d.y + ")";
