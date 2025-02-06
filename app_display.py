@@ -14,7 +14,7 @@ if isinstance(service_account_info, str):
     try:
         service_account_info = json.loads(service_account_info)
     except json.JSONDecodeError as e:
-        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que el secret esté correctamente formateado como TOML.")
+        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que estén correctamente formateadas en TOML.")
         st.stop()
 
 gc = gspread.service_account_from_dict(service_account_info)
