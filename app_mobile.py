@@ -1,36 +1,48 @@
 import streamlit as st
-import json, os, gspread
+import json, os, psycopg2
 
 st.set_page_config(page_title="Juego - Mobile", layout="centered")
 st.title("Juego de Adivinanza de Palabras (Mobile)")
 st.write("Ingresá tu nombre y adiviná las palabras.")
 
-# Carrega as credenciais do secret; se for string, tenta convertê-las
-service_account_info = st.secrets["gcp_service_account"]
-if isinstance(service_account_info, str):
-    try:
-        service_account_info = json.loads(service_account_info)
-    except json.JSONDecodeError as e:
-        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que estén correctamente formateadas en TOML.")
-        st.stop()
+# Obter a variável de conexão do Supabase (que deve estar configurada nos secrets)
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-gc = gspread.service_account_from_dict(service_account_info)
-spreadsheet_id = st.secrets["SPREADSHEET_ID"]
-sheet = gc.open_by_key(spreadsheet_id).sheet1
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
 
-# Se o sheet estiver vazio, cria o cabeçalho na célula A1
-if not sheet.get("A1"):
-    sheet.update("A1", "word")
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS discovered_words (
+            word TEXT PRIMARY KEY
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def read_game_data():
-    records = sheet.get_all_values()
-    words = [row[0].lower() for row in records[1:] if row]
-    return {"discovered": words}
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT word FROM discovered_words;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    discovered = [row[0] for row in rows]
+    return {"discovered": discovered}
 
 def update_game_data(word):
-    data = read_game_data()
-    if word.lower() not in data["discovered"]:
-        sheet.append_row([word.lower()])
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO discovered_words (word) VALUES (%s) ON CONFLICT DO NOTHING;", (word,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# Inicializa o banco de dados
+init_db()
 
 name = st.text_input("Poné tu nombre:")
 guess = st.text_input("Escribí una palabra:")
