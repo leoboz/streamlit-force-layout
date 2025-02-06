@@ -1,31 +1,33 @@
 import streamlit as st
 import streamlit.components.v1 as components
-import json, os, gspread
+import json, os, psycopg2
 from streamlit_autorefresh import st_autorefresh
 
+# Configuração da página
 st.set_page_config(page_title="Juego - Proyección", layout="wide")
 st.title("Proyección del Juego")
 st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
 
+# Auto-refresca a cada 2 segundos
 st_autorefresh(interval=2000, key="display_autorefresh")
 
-service_account_info = st.secrets["gcp_service_account"]
-if isinstance(service_account_info, str):
-    try:
-        service_account_info = json.loads(service_account_info)
-    except json.JSONDecodeError as e:
-        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que estén correctamente formateadas en TOML.")
-        st.stop()
+# Obter a variável de conexão do Supabase
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
-gc = gspread.service_account_from_dict(service_account_info)
-spreadsheet_id = st.secrets["SPREADSHEET_ID"]
-sheet = gc.open_by_key(spreadsheet_id).sheet1
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
 
 def read_game_data():
-    records = sheet.get_all_values()
-    words = [row[0].lower() for row in records[1:] if row]
-    return {"discovered": words}
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT word FROM discovered_words;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    discovered = [row[0] for row in rows]
+    return {"discovered": discovered}
 
+# Lista completa de nodos (palabras)
 all_possible_nodes = [
     {"id": "SÍNTESIS", "fixed": True},
     {"id": "integración"},
@@ -46,6 +48,7 @@ data = read_game_data()
 updated_nodes = []
 for node in all_possible_nodes:
     node_copy = dict(node)
+    # A palavra central "SÍNTESIS" é sempre considerada descoberta
     if node_copy["id"].lower() == "sintesis":
         node_copy["discovered"] = True
     else:
@@ -73,6 +76,7 @@ html_code = f"""
       const width = 1200;
       const height = 900;
       let nodes = {nodes_data};
+      // Fijar el nodo central ("SÍNTESIS") en el centro
       nodes = nodes.map(d => {{
         if(d.id === "SÍNTESIS") {{
           d.fx = width / 2;
@@ -117,6 +121,7 @@ html_code = f"""
         node.attr("transform", function(d) {{
             let r = d.central ? 60 : (d.discovered ? d.id.length * 5 : 0);
             if(r === 0) r = 5;
+            // Garantir que os nodos permaneçam dentro do canvas
             d.x = Math.max(r, Math.min(width - r, d.x));
             d.y = Math.max(r, Math.min(height - r, d.y));
             return "translate(" + d.x + "," + d.y + ")";
@@ -147,6 +152,5 @@ html_code = f"""
 </html>
 """
 
-import streamlit.components.v1 as components
 components.html(html_code, width=1200, height=900)
-st.markdown('<br><a href="https://app-force-layout-oz7bsyxrplpkahr2dzr6xp.streamlit.app/" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
+st.markdown('<br><a href="https://app-force-layout-5ynwopbqwn5ckqh9mukqve.streamlit.app/" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
