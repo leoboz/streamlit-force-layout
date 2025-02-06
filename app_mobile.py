@@ -1,49 +1,75 @@
 import streamlit as st
-import json, os
+import json, os, psycopg2
 
-# Define o caminho do arquivo de dados
-DATA_FILE = "game_data.json"
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump({"discovered": []}, f, ensure_ascii=False)
+# Configuração da página
+st.set_page_config(page_title="Juego - Mobile", layout="centered")
+
+# Obter a variável de conexão do Supabase dos secrets
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS discovered_words (
+            word TEXT PRIMARY KEY
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 def read_game_data():
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT word FROM discovered_words;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    discovered = [row[0] for row in rows]
+    return {"discovered": discovered}
 
-def update_game_data(new_data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(new_data, f, ensure_ascii=False)
+def update_game_data(word):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT INTO discovered_words (word) VALUES (%s) ON CONFLICT DO NOTHING;", (word,))
+    conn.commit()
+    cur.close()
+    conn.close()
 
-# Lista de palavras válidas (exceto a palavra central)
+# Inicializa o banco de dados (cria a tabela se necessário)
+init_db()
+
+st.title("Juego de Adivinanza de Palabras (Mobile)")
+st.write("Ingresá tu nombre y adiviná las palabras.")
+
+name = st.text_input("Poné tu nombre:")
+guess = st.text_input("Escribí una palabra:")
+
+# Lista de palavras válidas (excluindo a palavra central "SÍNTESIS")
 all_possible_words = [
     "integración", "simplificar", "resumen", "reducción",
     "guión", "recopilación", "compendio", "acortamiento",
     "extracto", "sinopsis", "compilación", "sumario"
 ]
 
-st.set_page_config(page_title="Jogo - Mobile", layout="centered")
-st.title("Jogo de Adivinhação (Mobile)")
-st.write("Digite seu nome e adivinhe as palavras.")
-
-name = st.text_input("Digite seu nome:")
-guess = st.text_input("Digite uma palavra:")
-
 if st.button("Enviar"):
     if not name:
-        st.error("Por favor, insira seu nome!")
+        st.error("¡Por favor, ingresá tu nombre!")
     else:
-        if guess.lower() in [word.lower() for word in all_possible_words]:
+        if guess.lower() in [w.lower() for w in all_possible_words]:
             data = read_game_data()
             if guess.lower() not in data["discovered"]:
-                data["discovered"].append(guess.lower())
-                update_game_data(data)
-                st.success(f"Parabéns, {name}! Você acertou '{guess}'.")
+                update_game_data(guess.lower())
+                st.success(f"¡Buenísimo, {name}! Adivinaste '{guess}'.")
             else:
-                st.warning("Essa palavra já foi descoberta!")
+                st.warning("¡Esa palabra ya fue descubierta!")
         else:
-            st.error("Palavra inválida!")
+            st.error("¡Palabra inválida!")
 
 st.markdown("---")
-st.write("Depois de enviar seu palpite, a projeção atualiza automaticamente na tela grande.")
-st.markdown('[Clique aqui para ver a projeção](https://seu-app-display.streamlit.app)', unsafe_allow_html=True)
+st.write("Después de enviar tu respuesta, la proyección se actualiza en la pantalla grande.")
+st.markdown('[Ver Proyección](https://YOUR_APP_DISPLAY_URL)', unsafe_allow_html=True)
