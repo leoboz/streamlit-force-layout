@@ -37,7 +37,7 @@ def read_game_data():
 # Inicializa o banco de dados (cria a tabela se necessário)
 init_db()
 
-# Lista completa de nodos (palabras)
+# Lista completa de nós (palabras)
 all_possible_nodes = [
     {"id": "SÍNTESIS", "fixed": True},
     {"id": "integración"},
@@ -138,7 +138,7 @@ html_code = f"""
         node.attr("transform", function(d) {{
             let r = d.central ? 60 : (d.discovered ? d.id.length * 5 : 0);
             if(r === 0) r = 5;
-            // Manter os nós dentro dos limites do canvas
+            // Garantir que os nós permaneçam dentro do canvas
             d.x = Math.max(r, Math.min(width - r, d.x));
             d.y = Math.max(r, Math.min(height - r, d.y));
             return "translate(" + d.x + "," + d.y + ")";
@@ -170,4 +170,4 @@ html_code = f"""
 """
 
 components.html(html_code, width=1200, height=900)
-st.markdown('<br><a href="https://YOUR_APP_MOBILE_URL" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
+st.markdown('<br><a href="https://app-force-layout-5ynwopbqwn5ckqh9mukqve.streamlit.app/" target="_self">Ver Mobile</a>', unsafe_allow_html=True)
