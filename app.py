@@ -4,7 +4,7 @@ import json, os
 from streamlit_autorefresh import st_autorefresh
 
 # --- Obtener los parámetros de la URL sin producir salida ---
-params = st.query_params()
+params = st.query_params
 view = params.get("view", ["mobile"])[0]
 
 # --- Configurar la página según la vista ---
@@ -57,7 +57,7 @@ for node in all_possible_nodes:
 
 nodes_data = json.dumps(updated_nodes)
 
-# --- MODO MOBILE: Formulario para enviar respuestas ---
+# ----- MODO MOBILE: Formulario para enviar respuestas -----
 if view == "mobile":
     st.title("Juego de Adivinanza de Palabras (Móvil)")
     st.write("Ingresá tu nombre y adiviná las palabras.")
@@ -83,7 +83,7 @@ if view == "mobile":
     st.write("Podés ver la proyección en otra pantalla:")
     st.markdown("[Ver Proyección](?view=display)")
 
-# --- MODO DISPLAY: Visualización interactiva en pantalla grande ---
+# ----- MODO DISPLAY: Visualización interactiva en pantalla grande -----
 else:
     st.title("Visualización del Juego")
     st.write("Esta es la pantalla de proyección. Se actualiza en tiempo real.")
