@@ -1,50 +1,33 @@
 import streamlit as st
-import json, os, psycopg2
+import json
+import os
+import gspread
 
-# Configuração da página
+# Configurar a página
 st.set_page_config(page_title="Juego - Mobile", layout="centered")
-
-# Obter a variável de conexão do Supabase dos secrets
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-def get_connection():
-    return psycopg2.connect(DATABASE_URL)
-
-def init_db():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS discovered_words (
-            word TEXT PRIMARY KEY
-        );
-    """)
-    conn.commit()
-    cur.close()
-    conn.close()
-
-def read_game_data():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT word FROM discovered_words;")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    discovered = [row[0] for row in rows]
-    return {"discovered": discovered}
-
-def update_game_data(word):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO discovered_words (word) VALUES (%s) ON CONFLICT DO NOTHING;", (word,))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-# Inicializa o banco de dados (cria a tabela se necessário)
-init_db()
-
 st.title("Juego de Adivinanza de Palabras (Mobile)")
 st.write("Ingresá tu nombre y adiviná las palabras.")
+
+# Inicializa a conexão com o Google Sheets usando os secrets
+gc = gspread.service_account_from_dict(st.secrets["gcp_service_account"])
+spreadsheet_id = st.secrets["SPREADSHEET_ID"]
+sheet = gc.open_by_key(spreadsheet_id).sheet1
+
+# Se o sheet estiver vazio, cria um cabeçalho na primeira linha
+if not sheet.get("A1"):
+    sheet.update("A1", "word")
+
+def read_game_data():
+    # Lê todos os valores da planilha (supondo que a primeira linha seja cabeçalho)
+    records = sheet.get_all_values()
+    # Obtém os valores da coluna "word", ignorando o cabeçalho
+    words = [row[0].lower() for row in records[1:] if row]
+    return {"discovered": words}
+
+def update_game_data(word):
+    data = read_game_data()
+    if word.lower() not in data["discovered"]:
+        sheet.append_row([word.lower()])
 
 name = st.text_input("Poné tu nombre:")
 guess = st.text_input("Escribí una palabra:")
@@ -63,7 +46,7 @@ if st.button("Enviar"):
         if guess.lower() in [w.lower() for w in all_possible_words]:
             data = read_game_data()
             if guess.lower() not in data["discovered"]:
-                update_game_data(guess.lower())
+                update_game_data(guess)
                 st.success(f"¡Buenísimo, {name}! Adivinaste '{guess}'.")
             else:
                 st.warning("¡Esa palabra ya fue descubierta!")
