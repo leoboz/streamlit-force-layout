@@ -5,19 +5,20 @@ st.set_page_config(page_title="Juego - Mobile", layout="centered")
 st.title("Juego de Adivinanza de Palabras (Mobile)")
 st.write("Ingresá tu nombre y adiviná las palabras.")
 
-# Tenta carregar as credenciais; se estiverem como string, tenta convertê-las
+# Carrega as credenciais do secret; se for string, tenta convertê-las
 service_account_info = st.secrets["gcp_service_account"]
 if isinstance(service_account_info, str):
     try:
         service_account_info = json.loads(service_account_info)
     except json.JSONDecodeError as e:
-        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que el secret esté correctamente formateado como TOML.")
+        st.error("Error al decodificar las credenciales de gcp_service_account. Asegurate de que estén correctamente formateadas en TOML.")
         st.stop()
 
 gc = gspread.service_account_from_dict(service_account_info)
 spreadsheet_id = st.secrets["SPREADSHEET_ID"]
 sheet = gc.open_by_key(spreadsheet_id).sheet1
 
+# Se o sheet estiver vazio, cria o cabeçalho na célula A1
 if not sheet.get("A1"):
     sheet.update("A1", "word")
 
